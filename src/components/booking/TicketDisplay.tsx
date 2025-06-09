@@ -1,16 +1,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Ticket, Download, Share2, Train, Calendar, Clock, MapPin } from 'lucide-react';
+import { Ticket, Download, Share2, Train, Calendar, Clock, MapPin, QrCode, FileText } from 'lucide-react';
 import { useBooking } from '@/contexts/BookingContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 
 const TicketDisplay = () => {
   const { pnr } = useParams<{ pnr: string }>();
   const { bookingData } = useBooking();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const { toast } = useToast();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -40,19 +42,54 @@ const TicketDisplay = () => {
   }
 
   const handleDownload = () => {
-    // Simulate ticket download
-    console.log('Downloading ticket...');
+    toast({
+      title: "Download Started",
+      description: "Your ticket PDF is being generated...",
+    });
+    // Simulate PDF generation
+    setTimeout(() => {
+      toast({
+        title: "Download Complete",
+        description: "Ticket downloaded successfully",
+      });
+    }, 2000);
   };
 
   const handleShare = () => {
-    // Simulate ticket sharing
-    if (navigator.share) {
-      navigator.share({
-        title: `Train Ticket - PNR: ${bookingData.pnr}`,
-        text: `My train booking details for ${bookingData.train.name}`,
-        url: window.location.href,
+    const shareData = {
+      title: `Train Ticket - PNR: ${bookingData.pnr}`,
+      text: `My train booking details for ${bookingData.train.name}`,
+      url: window.location.href,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      navigator.share(shareData).catch((error) => {
+        console.log('Error sharing:', error);
+        toast({
+          title: "Share Failed",
+          description: "Unable to share ticket. You can copy the URL instead.",
+          variant: "destructive",
+        });
+      });
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        toast({
+          title: "Link Copied",
+          description: "Ticket link copied to clipboard",
+        });
+      }).catch(() => {
+        toast({
+          title: "Share Failed",
+          description: "Unable to copy link. Please copy the URL manually.",
+          variant: "destructive",
+        });
       });
     }
+  };
+
+  const generateQRData = () => {
+    return `PNR:${bookingData.pnr}|TRAIN:${bookingData.train.number}|PASSENGERS:${bookingData.passengers.length}|FARE:${bookingData.totalFare}`;
   };
 
   return (
@@ -85,7 +122,10 @@ const TicketDisplay = () => {
               <div className="text-right">
                 <div className="text-2xl font-bold">PNR: {bookingData.pnr}</div>
                 <div className="text-sm text-blue-100">
-                  Booked on: {currentTime.toLocaleDateString()}
+                  Booked on: {currentTime.toLocaleDateString('en-IN')}
+                </div>
+                <div className="text-sm text-blue-100">
+                  Class: {bookingData.selectedClass}
                 </div>
               </div>
             </div>
@@ -106,6 +146,9 @@ const TicketDisplay = () => {
                   <div className="flex items-center space-x-2 text-gray-600 mb-1">
                     <MapPin className="h-4 w-4" />
                     <span>{bookingData.train.source} → {bookingData.train.destination}</span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Travel Class: <span className="font-semibold text-blue-600">{bookingData.selectedClass}</span>
                   </div>
                 </div>
                 <div>
@@ -133,6 +176,15 @@ const TicketDisplay = () => {
               <div className="space-y-4">
                 {bookingData.passengers.map((passenger, index) => (
                   <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex justify-between items-start mb-3">
+                      <h4 className="font-semibold text-lg text-blue-900">Passenger {index + 1}</h4>
+                      <div className="text-right">
+                        <div className="text-sm text-gray-600">Seat Number</div>
+                        <div className="font-bold text-blue-600">
+                          {passenger.coachNumber}-{passenger.seatNumber}
+                        </div>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       <div>
                         <label className="text-sm font-medium text-gray-600">Name</label>
@@ -143,17 +195,15 @@ const TicketDisplay = () => {
                         <p className="font-semibold">{passenger.age}/{passenger.gender}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-600">Destination</label>
-                        <p className="font-semibold">{passenger.destination}</p>
+                        <label className="text-sm font-medium text-gray-600">From</label>
+                        <p className="font-semibold text-blue-600">{bookingData.train.source}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-600">Seat</label>
-                        <p className="font-semibold">
-                          {passenger.coachNumber}-{passenger.seatNumber}
-                        </p>
+                        <label className="text-sm font-medium text-gray-600">To</label>
+                        <p className="font-semibold text-orange-600">{passenger.destination}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-600">Fare</label>
+                        <label className="text-sm font-medium text-gray-600">Individual Fare</label>
                         <p className="font-semibold text-green-600">₹{passenger.fare}</p>
                       </div>
                     </div>
@@ -167,14 +217,18 @@ const TicketDisplay = () => {
             {/* Booking Summary */}
             <div className="mb-6">
               <h3 className="text-xl font-bold text-gray-900 mb-3">Booking Summary</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Class</label>
-                  <p className="font-semibold">{bookingData.selectedClass}</p>
+                  <label className="text-sm font-medium text-gray-600">Travel Class</label>
+                  <p className="font-semibold text-blue-600">{bookingData.selectedClass}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-600">Total Passengers</label>
                   <p className="font-semibold">{bookingData.passengers.length}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Coach Number</label>
+                  <p className="font-semibold text-blue-600">{bookingData.passengers[0]?.coachNumber || 'B1'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-600">Total Fare</label>
@@ -183,21 +237,25 @@ const TicketDisplay = () => {
               </div>
             </div>
 
-            {/* QR Code Placeholder */}
+            {/* QR Code */}
             <div className="mb-6 text-center">
-              <div className="inline-block border-2 border-dashed border-gray-300 p-8 rounded-lg">
-                <div className="w-32 h-32 bg-gray-200 flex items-center justify-center rounded">
-                  <span className="text-gray-500 text-sm">QR Code</span>
+              <div className="inline-block border-2 border-gray-300 p-6 rounded-lg bg-white">
+                <div className="flex flex-col items-center">
+                  <QrCode className="h-24 w-24 text-gray-700 mb-2" />
+                  <div className="text-xs text-gray-600 max-w-48 break-all bg-gray-100 p-2 rounded">
+                    {generateQRData()}
+                  </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-2">Scan for ticket verification</p>
+                <p className="text-sm text-gray-600 mt-3 font-medium">Scan for ticket verification</p>
+                <p className="text-xs text-gray-500">Present this QR code to TTE</p>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
               <Button onClick={handleDownload} className="flex-1">
                 <Download className="h-4 w-4 mr-2" />
-                Download Ticket
+                Download PDF
               </Button>
               <Button onClick={handleShare} variant="outline" className="flex-1">
                 <Share2 className="h-4 w-4 mr-2" />
@@ -205,19 +263,22 @@ const TicketDisplay = () => {
               </Button>
               <Link to="/search" className="flex-1">
                 <Button variant="outline" className="w-full">
-                  Book Another Ticket
+                  <FileText className="h-4 w-4 mr-2" />
+                  Book Another
                 </Button>
               </Link>
             </div>
 
             {/* Important Notes */}
-            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h4 className="font-semibold text-yellow-800 mb-2">Important Notes:</h4>
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h4 className="font-semibold text-yellow-800 mb-2">Important Journey Instructions:</h4>
               <ul className="text-sm text-yellow-700 space-y-1">
-                <li>• Please carry a valid ID proof during journey</li>
+                <li>• Carry a valid government-issued photo ID during journey</li>
                 <li>• Report to the station at least 30 minutes before departure</li>
-                <li>• Both passengers will be seated in the same coach (B1)</li>
+                <li>• Both passengers are seated in coach {bookingData.passengers[0]?.coachNumber || 'B1'}</li>
                 <li>• Cancellation charges apply as per IRCTC policy</li>
+                <li>• Present this e-ticket and ID proof to the Ticket Examiner (TTE)</li>
+                <li>• Keep the QR code visible for quick verification</li>
               </ul>
             </div>
           </CardContent>
