@@ -13,6 +13,9 @@ router.post('/refresh', refresh);
 router.post('/logout', logout);
 router.get('/me', requireAuth, me);
 
+// Firebase-based Google sign-in (client obtains Firebase idToken and posts it here)
+router.post('/firebase', firebaseAuth);
+
 router.get('/google', googleAuth);
 router.get('/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/' }), googleCallback);
 
