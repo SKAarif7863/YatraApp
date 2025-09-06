@@ -81,9 +81,6 @@ const Navbar = () => {
                 <Button onClick={() => navigate('/register')} className="bg-orange-600 hover:bg-orange-700">
                   Register
                 </Button>
-                <Button onClick={handleGoogleSignIn} className="bg-white border px-3 py-1 text-sm">
-                  Sign in with Google
-                </Button>
               </div>
             )}
 
