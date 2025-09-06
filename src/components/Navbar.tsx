@@ -19,11 +19,6 @@ const Navbar = () => {
     navigate('/');
   };
 
-  const handleGoogleSignIn = () => {
-    // Redirect to backend Google OAuth start route
-    // Backend should be configured to handle the OAuth flow and redirect back to the frontend
-    window.location.href = '/api/auth/google';
-  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-lg border-b-4 border-orange-500">
@@ -95,11 +90,6 @@ const Navbar = () => {
                 <DropdownMenuItem onClick={() => navigate('/search')}>
                   Train Search
                 </DropdownMenuItem>
-                {!user && (
-                  <DropdownMenuItem onClick={handleGoogleSignIn}>
-                    Sign in with Google
-                  </DropdownMenuItem>
-                )}
                 {user?.isAdmin && (
                   <DropdownMenuItem onClick={() => navigate('/admin')}>
                     Admin Dashboard
