@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface User {
@@ -15,6 +14,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  googleSignIn: (idToken: string) => Promise<boolean>;
 }
 
 interface RegisterData {
@@ -57,21 +57,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Simulate API call - replace with actual API endpoint
-      const mockUser = {
-        id: '1',
-        name: 'John Doe',
-        email: email,
-        phone: '+91 9876543210',
-        isAdmin: email === 'admin@irctc.com'
-      };
-      
-      const mockToken = 'mock_jwt_token_' + Date.now();
-      
-      localStorage.setItem('auth_token', mockToken);
-      localStorage.setItem('user_data', JSON.stringify(mockUser));
-      setUser(mockUser);
-      
+      // Call real API
+      const res = await fetch('/api/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      localStorage.setItem('auth_token', data.accessToken);
+      localStorage.setItem('user_data', JSON.stringify(data.user));
+      setUser(data.user);
       return true;
     } catch (error) {
       console.error('Login error:', error);
@@ -81,27 +76,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (userData: RegisterData): Promise<boolean> => {
     try {
-      // Simulate API call - replace with actual API endpoint
-      const newUser = {
-        id: Date.now().toString(),
-        name: userData.name,
-        email: userData.email,
-        phone: userData.phone,
-        isAdmin: false
-      };
-      
-      const mockToken = 'mock_jwt_token_' + Date.now();
-      
-      localStorage.setItem('auth_token', mockToken);
-      localStorage.setItem('user_data', JSON.stringify(newUser));
-      setUser(newUser);
-      
+      const res = await fetch('/api/auth/register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      localStorage.setItem('auth_token', data.accessToken);
+      localStorage.setItem('user_data', JSON.stringify(data.user));
+      setUser(data.user);
       return true;
     } catch (error) {
       console.error('Registration error:', error);
       return false;
     }
   };
+
+  const googleSignIn = async (idToken: string) => {
+    try {
+      const res = await fetch('/api/auth/firebase', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken })
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      localStorage.setItem('auth_token', data.accessToken);
+      localStorage.setItem('user_data', JSON.stringify(data.user));
+      setUser(data.user);
+      return true;
+    } catch (e) {
+      console.error('Google sign-in error', e);
+      return false;
+    }
+  };
+
 
   const logout = () => {
     localStorage.removeItem('auth_token');
@@ -110,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, isLoading, googleSignIn }}>
       {children}
     </AuthContext.Provider>
   );

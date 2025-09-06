@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Train, User, LogOut, Menu } from 'lucide-react';
@@ -19,6 +18,7 @@ const Navbar = () => {
     logout();
     navigate('/');
   };
+
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-lg border-b-4 border-orange-500">
