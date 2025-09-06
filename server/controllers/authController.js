@@ -87,3 +87,36 @@ export function googleCallback(req, res) {
   if (redirect) return res.redirect(redirect);
   res.json({ user: userResponse(user), accessToken });
 }
+
+export async function firebaseAuth(req, res) {
+  const { idToken } = req.body;
+  if (!idToken) return res.status(400).json({ message: 'idToken is required' });
+  try {
+    const { verifyFirebaseIdToken } = await import('../utils/firebaseAdmin.js');
+    const decoded = await verifyFirebaseIdToken(idToken);
+    // decoded contains uid, email, name (if provided)
+    const uid = decoded.uid;
+    const email = decoded.email;
+    const name = decoded.name || decoded.firebase?.identities?.email?.[0] || '';
+
+    if (!email) return res.status(400).json({ message: 'Token does not contain email' });
+
+    let user = await User.findOne({ $or: [{ googleId: uid }, { email }] });
+    if (!user) {
+      user = await User.create({ email, name, googleId: uid });
+    } else if (!user.googleId) {
+      user.googleId = uid;
+      await user.save();
+    }
+
+    const accessToken = signAccessToken({ sub: user._id.toString() });
+    const { token: refreshToken, expiresAt } = signRefreshToken();
+    await RefreshToken.create({ user: user._id, tokenHash: hashToken(refreshToken), expiresAt });
+    res.cookie('refresh_token', refreshToken, getRefreshCookieOptions());
+    res.json({ user: userResponse(user), accessToken });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Firebase auth error', e);
+    res.status(500).json({ message: 'Firebase verification failed' });
+  }
+}
