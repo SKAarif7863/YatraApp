@@ -2,7 +2,7 @@ import { Router } from 'express';
 import passport from 'passport';
 import { validate } from '../middleware/validate.js';
 import { registerSchema, loginSchema } from '../validation/authSchemas.js';
-import { register, login, refresh, logout, me, googleAuth, googleCallback } from '../controllers/authController.js';
+import { register, login, refresh, logout, me, googleAuth, googleCallback, firebaseAuth } from '../controllers/authController.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
