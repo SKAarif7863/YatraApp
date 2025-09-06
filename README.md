@@ -24,10 +24,21 @@ Copy .env.example to .env and set values:
 
 ## Run locally
 1) Install deps: npm i
-2) Start frontend: npm run dev
-3) Start API: npm run server:dev
+2) Create .env from .env.example and fill values
+3) Start frontend: npm run dev (http://localhost:8080)
+4) Start API: npm run server:dev (http://localhost:4000)
 
-API runs on http://localhost:4000
+## MongoDB Atlas setup
+- Create a free cluster at https://www.mongodb.com/cloud/atlas
+- Create a Database User and allow access from your IP (Network Access)
+- Create a database (e.g., appdb) and get the connection string; set MONGODB_URI in .env
+
+## Google OAuth setup
+- Go to https://console.cloud.google.com/apis/credentials
+- Create OAuth 2.0 Client ID (Web application)
+- Authorized redirect URI: http://localhost:4000/api/auth/google/callback
+- Copy Client ID/Secret into GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET in .env
+
 
 ## Auth Endpoints
 - POST /api/auth/register { email, password, name }
