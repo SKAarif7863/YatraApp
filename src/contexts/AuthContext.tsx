@@ -14,6 +14,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  googleSignIn: (idToken: string) => Promise<boolean>;
 }
 
 interface RegisterData {
