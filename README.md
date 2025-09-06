@@ -1,73 +1,54 @@
-# Welcome to your Lovable project
+# MERN Auth Scaffold + Vite React UI
 
-## Project info
+This project includes a Vite + React (shadcn-ui) frontend and an Express + MongoDB API server with secure authentication (email/password, JWT access + refresh, Google OAuth 2.0).
 
-**URL**: https://lovable.dev/projects/9e76d41d-1adb-4148-964b-6de500e3dd26
+## Contents
+- Frontend: Vite React app (port 8080)
+- Server: Express API in ./server (port 4000)
 
-## How can I edit this code?
+## Server Features
+- Auth: email/password (bcrypt), JWT access + refresh tokens with rotation and token revocation
+- Google OAuth 2.0 (passport-google-oauth20)
+- Mongoose models (User, RefreshToken)
+- Security middleware: helmet, CORS, rate-limiter, cookie httpOnly refresh token
+- Central error handler, logging (morgan)
+- Input validation (zod)
+- Placeholder items API (/api/items)
 
-There are several ways of editing your application.
+## Environment (.env)
+Copy .env.example to .env and set values:
+- MONGODB_URI
+- JWT_SECRET
+- GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+- CORS_ORIGIN (default http://localhost:8080)
 
-**Use Lovable**
+## Run locally
+1) Install deps: npm i
+2) Start frontend: npm run dev
+3) Start API: npm run server:dev
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9e76d41d-1adb-4148-964b-6de500e3dd26) and start prompting.
+API runs on http://localhost:4000
 
-Changes made via Lovable will be committed automatically to this repo.
+## Auth Endpoints
+- POST /api/auth/register { email, password, name }
+- POST /api/auth/login { email, password }
+- POST /api/auth/refresh (uses httpOnly cookie)
+- POST /api/auth/logout
+- GET /api/auth/me (Authorization: Bearer <access>)
+- GET /api/auth/google and GET /api/auth/google/callback
 
-**Use your preferred IDE**
+## CSRF Considerations
+- Refresh token is stored in httpOnly cookie, scoped to /api/auth/refresh to reduce CSRF surface
+- Use SameSite=lax by default; for cross-site OAuth flows use SameSite=none;secure in production
+- For state-changing requests, prefer Authorization bearer tokens and consider CSRF tokens if you accept cookie-based auth
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Docker (optional)
+- Sample Dockerfile and docker-compose in ./server
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Postman
+- Import docs/postman_collection.json
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/9e76d41d-1adb-4148-964b-6de500e3dd26) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Notes
+- Refresh token rotation: each refresh issues a new token and revokes the previous
+- Logout revokes the presented refresh token and clears cookie
+- Add more routes in server/routes and controllers in server/controllers

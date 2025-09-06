@@ -1,0 +1,36 @@
+{
+  "info": {
+    "name": "MERN Auth API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": { "method": "GET", "url": "http://localhost:4000/api/health" }
+    },
+    {
+      "name": "Register",
+      "request": { "method": "POST", "url": "http://localhost:4000/api/auth/register", "header": [ {"key":"Content-Type","value":"application/json"} ], "body": { "mode": "raw", "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123!\",\n  \"name\": \"Test User\"\n}" } }
+    },
+    {
+      "name": "Login",
+      "request": { "method": "POST", "url": "http://localhost:4000/api/auth/login", "header": [ {"key":"Content-Type","value":"application/json"} ], "body": { "mode": "raw", "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123!\"\n}" } }
+    },
+    {
+      "name": "Refresh",
+      "request": { "method": "POST", "url": "http://localhost:4000/api/auth/refresh" }
+    },
+    {
+      "name": "Me",
+      "request": { "method": "GET", "url": "http://localhost:4000/api/auth/me", "header": [ {"key":"Authorization","value":"Bearer {{accessToken}}"} ] }
+    },
+    {
+      "name": "Logout",
+      "request": { "method": "POST", "url": "http://localhost:4000/api/auth/logout" }
+    },
+    {
+      "name": "Items - List",
+      "request": { "method": "GET", "url": "http://localhost:4000/api/items" }
+    }
+  ]
+}
