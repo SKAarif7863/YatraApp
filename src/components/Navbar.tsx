@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Train, User, LogOut, Menu } from 'lucide-react';
@@ -18,6 +17,12 @@ const Navbar = () => {
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleGoogleSignIn = () => {
+    // Redirect to backend Google OAuth start route
+    // Backend should be configured to handle the OAuth flow and redirect back to the frontend
+    window.location.href = '/api/auth/google';
   };
 
   return (
@@ -76,6 +81,9 @@ const Navbar = () => {
                 <Button onClick={() => navigate('/register')} className="bg-orange-600 hover:bg-orange-700">
                   Register
                 </Button>
+                <Button onClick={handleGoogleSignIn} className="bg-white border px-3 py-1 text-sm">
+                  Sign in with Google
+                </Button>
               </div>
             )}
 
@@ -90,6 +98,11 @@ const Navbar = () => {
                 <DropdownMenuItem onClick={() => navigate('/search')}>
                   Train Search
                 </DropdownMenuItem>
+                {!user && (
+                  <DropdownMenuItem onClick={handleGoogleSignIn}>
+                    Sign in with Google
+                  </DropdownMenuItem>
+                )}
                 {user?.isAdmin && (
                   <DropdownMenuItem onClick={() => navigate('/admin')}>
                     Admin Dashboard
