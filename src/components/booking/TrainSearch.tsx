@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Search, ArrowRight } from 'lucide-react';
 import { useBooking } from '@/contexts/BookingContext';
@@ -7,35 +6,36 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 const TrainSearch = () => {
   const [searchParams, setSearchParams] = useState({
     from: '',
     to: '',
     date: '',
-    class: ''
+    class: '',
+    trainQuery: ''
   });
   const [trains, setTrains] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const { setTrain, setClass } = useBooking();
   const navigate = useNavigate();
 
-  const stations = [
+  // A proper listing of stations - in production this should come from an API
+  const stations = useMemo(() => [
     'New Delhi',
     'Mumbai Central',
     'Chennai Central',
     'Kolkata',
     'Bangalore',
     'Hyderabad',
-    'Pune'
-  ];
+    'Pune',
+    'Jaipur',
+    'Lucknow',
+    'Ahmedabad',
+    'Surat',
+    'Vadodara',
+    'Nagpur'
+  ], []);
 
   const classes = [
     { value: '1A', label: 'First AC (1A)' },
@@ -79,17 +79,85 @@ const TrainSearch = () => {
     }
   ];
 
+  // Suggestion dropdown state
+  const [fromQuery, setFromQuery] = useState('');
+  const [toQuery, setToQuery] = useState('');
+  const [showFromSuggestions, setShowFromSuggestions] = useState(false);
+  const [showToSuggestions, setShowToSuggestions] = useState(false);
+  const fromRef = useRef<HTMLInputElement | null>(null);
+  const toRef = useRef<HTMLInputElement | null>(null);
+
+  const filteredFrom = useMemo(() => {
+    if (!fromQuery) return [];
+    const q = fromQuery.toLowerCase();
+    return stations.filter(s => s.toLowerCase().includes(q));
+  }, [fromQuery, stations]);
+
+  const filteredTo = useMemo(() => {
+    if (!toQuery) return [];
+    const q = toQuery.toLowerCase();
+    return stations.filter(s => s.toLowerCase().includes(q) && s !== searchParams.from);
+  }, [toQuery, stations, searchParams.from]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (fromRef.current && !fromRef.current.contains(e.target as Node)) setShowFromSuggestions(false);
+      if (toRef.current && !toRef.current.contains(e.target as Node)) setShowToSuggestions(false);
+    };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, []);
+
+  // Date restrictions: min today, max two months from now
+  const today = new Date();
+  const minDate = today.toISOString().split('T')[0];
+  const maxDateObj = new Date(today);
+  maxDateObj.setMonth(maxDateObj.getMonth() + 2);
+  // If adding 2 months lands on invalid date (e.g., 31 -> shorter month), adjust
+  if (maxDateObj.getDate() !== today.getDate()) {
+    maxDateObj.setDate(0); // go to last day of previous month
+  }
+  const maxDate = maxDateObj.toISOString().split('T')[0];
+
   const handleSearch = async () => {
+    // Basic validations
     if (!searchParams.from || !searchParams.to || !searchParams.date) {
+      alert('Please select source, destination and journey date');
+      return;
+    }
+    if (searchParams.from === searchParams.to) {
+      alert('Source and destination cannot be the same');
+      return;
+    }
+    // Date range check
+    if (searchParams.date < minDate || searchParams.date > maxDate) {
+      alert(`Please select a date between ${minDate} and ${maxDate}`);
       return;
     }
 
     setIsSearching(true);
-    // Simulate API call
+    // Simulate API call and filter mock trains by query
     setTimeout(() => {
-      setTrains(mockTrains);
+      const q = searchParams.trainQuery.trim().toLowerCase();
+      let results = mockTrains.filter(t => t.source === searchParams.from && t.destination === searchParams.to);
+      if (q) {
+        results = results.filter(t => t.name.toLowerCase().includes(q) || t.number.includes(q));
+      }
+      setTrains(results);
       setIsSearching(false);
-    }, 1000);
+    }, 800);
+  };
+
+  const handleSelectFrom = (val: string) => {
+    setSearchParams({ ...searchParams, from: val });
+    setFromQuery('');
+    setShowFromSuggestions(false);
+  };
+
+  const handleSelectTo = (val: string) => {
+    setSearchParams({ ...searchParams, to: val });
+    setToQuery('');
+    setShowToSuggestions(false);
   };
 
   const handleBookTrain = (train: any, selectedClass: string) => {
@@ -110,45 +178,82 @@ const TrainSearch = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+              <div className="relative md:col-span-1" ref={fromRef}>
                 <Label htmlFor="from">From</Label>
-                <Select value={searchParams.from} onValueChange={(value) => setSearchParams({...searchParams, from: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stations.map((station) => (
-                      <SelectItem key={station} value={station}>{station}</SelectItem>
+                <Input
+                  id="from"
+                  placeholder="Type source"
+                  value={searchParams.from || fromQuery}
+                  onChange={(e) => { setFromQuery(e.target.value); setSearchParams({ ...searchParams, from: '' }); setShowFromSuggestions(true); }}
+                  onFocus={() => fromQuery && setShowFromSuggestions(true)}
+                />
+                {showFromSuggestions && filteredFrom.length > 0 && (
+                  <div className="absolute z-10 bg-white border mt-1 rounded w-full max-h-48 overflow-auto">
+                    {filteredFrom.map(s => (
+                      <div key={s} className="px-3 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => handleSelectFrom(s)}>{s}</div>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
               </div>
-              <div>
+
+              <div className="relative md:col-span-1" ref={toRef}>
                 <Label htmlFor="to">To</Label>
-                <Select value={searchParams.to} onValueChange={(value) => setSearchParams({...searchParams, to: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select destination" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stations.filter(s => s !== searchParams.from).map((station) => (
-                      <SelectItem key={station} value={station}>{station}</SelectItem>
+                <Input
+                  id="to"
+                  placeholder="Type destination"
+                  value={searchParams.to || toQuery}
+                  onChange={(e) => { setToQuery(e.target.value); setSearchParams({ ...searchParams, to: '' }); setShowToSuggestions(true); }}
+                  onFocus={() => toQuery && setShowToSuggestions(true)}
+                />
+                {showToSuggestions && filteredTo.length > 0 && (
+                  <div className="absolute z-10 bg-white border mt-1 rounded w-full max-h-48 overflow-auto">
+                    {filteredTo.map(s => (
+                      <div key={s} className="px-3 py-2 hover:bg-gray-100 cursor-pointer" onClick={() => handleSelectTo(s)}>{s}</div>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
               </div>
-              <div>
+
+              <div className="md:col-span-1">
                 <Label htmlFor="date">Journey Date</Label>
                 <Input
+                  id="date"
                   type="date"
                   value={searchParams.date}
-                  onChange={(e) => setSearchParams({...searchParams, date: e.target.value})}
-                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setSearchParams({ ...searchParams, date: e.target.value })}
+                  min={minDate}
+                  max={maxDate}
+                />
+                <div className="text-xs text-gray-500 mt-1">Select a date between {minDate} and {maxDate}</div>
+              </div>
+
+              <div className="md:col-span-1">
+                <Label htmlFor="class">Class</Label>
+                <select
+                  id="class"
+                  className="w-full rounded-md border bg-white px-3 py-2"
+                  value={searchParams.class}
+                  onChange={(e) => setSearchParams({ ...searchParams, class: e.target.value })}
+                >
+                  <option value="">Any</option>
+                  {classes.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <Label htmlFor="trainQuery">Train name or number</Label>
+                <Input
+                  id="trainQuery"
+                  placeholder="Search by train name or number"
+                  value={searchParams.trainQuery}
+                  onChange={(e) => setSearchParams({ ...searchParams, trainQuery: e.target.value })}
                 />
               </div>
-              <div className="flex items-end">
-                <Button 
-                  onClick={handleSearch} 
+
+              <div className="flex items-end md:col-span-6">
+                <Button
+                  onClick={handleSearch}
                   disabled={isSearching}
                   className="w-full bg-orange-600 hover:bg-orange-700"
                 >
@@ -185,7 +290,7 @@ const TrainSearch = () => {
                         <span>Duration: {train.duration}</span>
                       </div>
                     </div>
-                    
+
                     <div className="lg:ml-8">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {train.classes.map((cls: any) => (
@@ -193,8 +298,8 @@ const TrainSearch = () => {
                             <div className="font-medium text-sm">{cls.name}</div>
                             <div className="text-lg font-bold text-green-600">₹{cls.fare}</div>
                             <div className="text-xs text-gray-600">{cls.available} Available</div>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               className="mt-2 w-full"
                               onClick={() => handleBookTrain(train, cls.type)}
                               disabled={cls.available === 0}
